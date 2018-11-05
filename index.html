@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <script src="//code.jquery.com/jquery-2.1.1.min.js"></script>
+    <meta charset="utf-8">
+    <title>瀑布流新闻网站</title>
+    <style>
+      html,body,ul,li,p,div{
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      ul,li{
+        list-style: none;
+      }
+
+      .clearfix:after{
+        content: '';
+        display: block;
+        clear: both;
+      }
+
+      .wrap{
+        width: 900px;
+        margin: 0 auto;
+      }
+
+      #pic-ct{
+        position: relative;
+      }
+
+      #pic-ct .item{
+        position: absolute;
+        width: 280px;
+        margin: 10px;
+        padding: 0 0 10px 0;
+        border: 1px solid #DFDFDF;
+        background: #fff;
+        opacity: 0;
+        transition: all .8s;
+      }
+
+      #pic-ct .item img{
+        margin: 10px;
+        width: 260px;
+      }
+
+      #pic-ct .item .header{
+        height: 25px;
+        margin: 0 12px;
+        border-bottom: 1px solid #DBDBDB;
+      }
+
+      #pic-ct .desp{
+        font-size: 12px;
+        line-height: 1.8;
+        margin: 10px 15px 0;
+        color: #777371;
+      }
+
+      #load{
+        visibility: hidden;
+        height: 20px;
+      }
+
+      .hide {
+        display: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="ct-waterfall">
+        <ul id="pic-ct" class="clearfix">
+          <!-- <li class="item">
+<a href="#" class="link">
+<img src="https://ss1.bdstatic.com/70cFuXSh_Q1YnxGkpoWK1HF6hhy/it/u=4161866998,879502409&fm=26&gp=0.jpg" alt="">
+</a>
+<h4 class="header">大熊猫秋乏来袭无精打采</h4>
+<p class="desp">
+新闻描述。
+</p>
+</li> -->
+          <li class="item hide"><!-- 用于计算 item 宽度和列数，但不展示出来 --></li>
+        </ul>
+        <div id="load"><!-- 看不见的元素 --></div>
+      </div>
+    </div>
+
+    <script>
+      var curPage = 1
+var perPageCount = 10
+var colSumHeight = []
+var nodeWidth = $('.item').outerWidth(true)
+var colNum = parseInt($('#pic-ct').width()/nodeWidth)
+for(var i = 0; i < colNum.length; i++){
+  colSumHeight[i] = 0
+}
+
+var isDataArrive = true
+
+start()
+
+function start(){
+  getData(function(newsList){
+    console.log(newsList)
+    isDataArrive = true
+    $.each(newsList, function(idx, news){
+      var $node = getNode(news)
+      $node.find('img').load(function(){
+        $('#pic-ct').append($node)
+        console.log($node, 'loaded...')
+        waterFallPlace($node)
+      })
+    })
+  })
+  isDataArrive = false
+}
+
+$(window).scroll(function(){
+  if(!isDataArrive) return
+
+  if(isVisible($('#load'))){
+    start()
+  }
+})
+
+
+function getData(callback){
+  $.ajax({
+    url: 'http://platform.sina.com.cn/slide/album_tech',
+    dataType: 'jsonp',
+    jsonp: 'jsoncallback',
+    data: {
+      app_key: '1271687855',
+      num: perPageCount,
+      page: curPage
+    }
+  }).done(function(ret){
+    if(ret && ret.status && ret.status.code === "0"){
+      callback(ret.data); //如果数据没问题，那么生成节点并摆放好位置。
+      curPage++
+    }else{
+      console.log('get error data');
+    }
+  })
+}
+
+
+function getNode(item){
+  var tpl = ''
+  tpl += '<li class="item">';
+  tpl += ' <a href="'+ item.url +'" class="link"><img src="' + item.img_url + '" alt=""></a>';
+  tpl += ' <h4 class="header">'+ item.short_name +'</h4>';
+  tpl += '<p class="desp">'+item.short_intro+'</p>';
+  tpl += '</li>';
+
+  return $(tpl)
+}
+var colSumHeight = [],
+    nodeWidth = $('.item').outerWidth(true),
+    colNum = parseInt($('#pic-ct').width()/nodeWidth);
+
+for(var i=0; i<colNum; i++){
+  colSumHeight.push(0)
+}
+
+function waterFallPlace($nodes){
+  $nodes.each(function(){
+    var $cur = $(this);
+
+    var idx = 0,
+        minSumHeight = colSumHeight[0];
+
+    for(var i=0;i<colSumHeight.length; i++){
+      if(colSumHeight[i] < minSumHeight){
+        idx = i;
+        minSumHeight = colSumHeight[i];
+      }
+    }
+
+    $cur.css({
+      left: nodeWidth*idx,
+      top: minSumHeight,
+      opacity: 1
+    });
+
+    colSumHeight[idx] = $cur.outerHeight(true) + colSumHeight[idx];
+    $('#pic-ct').height(Math.max.apply(null,colSumHeight));
+  });
+
+}
+
+function isVisible($el){
+  var scrollH = $(window).scrollTop(),
+      winH = $(window).height(),
+      top = $el.offset().top;
+
+  if(top < winH + scrollH){
+    return true;
+  }else{
+    return false;
+  }
+}
+
+    </script>
+    
+  </body>
+</html>
